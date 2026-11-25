@@ -1,33 +1,18 @@
-name: Bangun APK dari ZIP
+name: Bangun APK Android
 
 on:
   workflow_dispatch:
   push:
-    paths:
-      - '*.zip'
-      - '.github/workflows/build.yml'
+    tags: ['v*']
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   apk:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Ekstrak ZIP
-        run: |
-          ZIP=$(ls -1 *.zip 2>/dev/null | head -1)
-          if [ -z "$ZIP" ]; then echo "::error::Tidak ada berkas .zip di akar repositori"; exit 1; fi
-          echo "Memakai: $ZIP"
-          mkdir -p proyek
-          unzip -q -o "$ZIP" -d proyek
-          GR=$(find proyek -name settings.gradle -not -path '*/node_modules/*' | head -1)
-          if [ -z "$GR" ]; then echo "::error::settings.gradle tidak ditemukan di dalam zip"; exit 1; fi
-          DIR=$(dirname "$GR")
-          echo "Folder proyek: $DIR"
-          echo "PROJ_DIR=$DIR" >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@v4
         with:
@@ -42,15 +27,12 @@ jobs:
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
 
       - name: Bangun APK debug
-        working-directory: ${{ env.PROJ_DIR }}
-        env:
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
         run: gradle assembleDebug --no-daemon
 
       - name: Kumpulkan hasil
         run: |
           mkdir -p hasil
-          cp "$PROJ_DIR"/app/build/outputs/apk/debug/*.apk hasil/StudioKartun-debug.apk
+          cp app/build/outputs/apk/debug/*.apk hasil/StudioKartun-debug.apk
 
       - uses: actions/upload-artifact@v4
         with:
